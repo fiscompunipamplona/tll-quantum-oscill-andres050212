@@ -7,7 +7,7 @@ from pylab import plot, xlabel, ylabel, show
 from scipy.integrate import odeint
 from vpython import sphere, scene, vector, color, arrow, text, sleep, cylinder
 
-arrow_size = 0.1  #Tamaño de la flecha
+arrow_size = 0.3  #Tamaño de la flecha
 
 arrow_x = arrow(pos=vector(0,0,0), axis=vector(arrow_size,0,0), color=color.red)
 arrow_y = arrow(pos=vector(0,0,0), axis=vector(0,arrow_size,0), color=color.green)
@@ -18,38 +18,39 @@ R = 0.03 #Radio de la esfera
 
 ###### Función Principal ###### 
 
-def func (conds, t, g, l): 
-    dc1=conds[4]
-    dd1=conds[5]
-    dthe1=conds[1]
-    dc=(1/2)*(-(conds[5])*cos(conds[0]-conds[2])-((conds[2])**2)*sin(conds[0]-conds[2]))-(g/l)*sin(conds[0])
-    dthe2=conds[3]
-    dd=-(conds[4])*cos(conds[0]-conds[2])+((conds[1])**2)*sin(conds[0]-conds[2])-(g/l)*sin(conds[2])
-    return array([dthe1,dc,dthe2,dd,dc1,dd1], float)
+def func (r, t, g, l): 
+    the1 = r[0]
+    ome1 = r[1]
+    the2 = r[2]
+    ome2 = r[3]
+    
+    f_ome1 = - (ome1 ** 2 * sin(2 * the1 - 2 * the2) + 2 * ome2 ** 2 * sin(the1 - the2) + \
+                  g / l * (sin(the1 - 2 * the2) + 3 * sin(the1))) / (3 - cos(2 * the1 - 2 * the2))
+    f_ome2 = (4 * ome1 ** 2 * sin(the1 - the2) + ome2 ** 2 * sin(2 * the1 - 2 * the2) + \
+                 2 * g / l * (sin(2 * the1 - the2) - sin(the2))) / (3 - cos(2 * the1 - 2 * the2))
+    
+    return array([ome1,f_ome1,ome2,f_ome2], float)
 
 #####################################################################
 
 ###### Condiciones Iniciales ######
-g = 9.8
-l = 0.2
 
-the1=pi/2.
-c=0.
-the2=pi/2
-d=1.
-dc=0.
-dd=0.
-
-initcond = array([the1,c,the2,d,dc,dd])
+g = 9.81  # m/s^2
+m = 1. # kg
+l = 0.2  # longitud del péndulo
+the1_1 = pi/2. 
+the2_1 = pi/2.
+ome1_1 = 0.
+ome2_1 = 0.
 
 #####################################################################
 
 
 ###### Tiempo Del Problema ######
 
-n_steps = 5000 #Número de pasos
+n_steps = 100000 #Número de pasos
 t_start = 0.   #Tiempo inicial
-t_final = 12.  #Tiempo final
+t_final = 100.  #Tiempo final
 t_delta = (t_final - t_start) / n_steps #Diferencial de tiempo (Paso temporal)
 t = linspace(t_start, t_final, n_steps) #Arreglo de diferencial de tiempo
 
@@ -58,9 +59,16 @@ t = linspace(t_start, t_final, n_steps) #Arreglo de diferencial de tiempo
 
 ###### Solución Del Problema Con Odeint ######
 
-solu, outodeint = odeint( func, initcond, t, args = (g, l), full_output=True) 
+r = array([the1_1, ome1_1, the2_1, ome2_1], float)
 
-the_1,cc,the_2,dd,c2,d2 = solu.T 
+solu, outodeint = odeint( func,r, t, args = (g, l), full_output=True) 
+#solener=odeint(energia,r,t,arg=(g,m,l),full_output=True)
+#plot(t, solener)
+#xlabel('t (s)')
+#ylabel('energia (J)')
+#show()
+
+the_10, ome_10, the_20, ome_20 = solu.T 
 
 #####################################################################
 
@@ -68,17 +76,17 @@ the_1,cc,the_2,dd,c2,d2 = solu.T
 ###### Datos Para La Animación ######
 
 
-scene.range = 0.5 #Tamaño de la escena
+scene.range = 0.6 #Tamaño de la escena
 
 
 ###### Posiciones en coord. Polares ######
 
-xp = l*sin(the1) 
-yp = -l*cos(the1)
+xp = l*sin(the1_1) 
+yp = -l*cos(the1_1)
 zp = 0.
 
-xs=l*(sin(the1)+sin(the2))
-ys=-l*(cos(the1)+cos(the2))
+xs=l*(sin(the1_1)+sin(the2_1))
+ys=-l*(cos(the1_1)+cos(the2_1))
 zs=0.
 
 ####################################################################
@@ -88,10 +96,10 @@ sleeptime = 0.0001 #Tiempo de actualización
 
 ###### Figuras para la animación ######
 
-prtcl1 = sphere(pos=vector(xp,yp,zp), radius=R, color=color.red) 
+prtcl1 = sphere(pos=vector(xp,yp,zp), radius=R, color=color.white) 
 prtcls1= sphere(pos=vector(xs,ys,zs), radius=R, color=color.blue)
-cyl1= cylinder(pos=vector(0,0,0), radius=l/40, color=color.yellow)
-cyl2= cylinder(pos=vector(xp,yp,0), radius=l/40, color=color.yellow)
+cyl1= cylinder(pos=vector(0,0,0), radius=l/50, color=color.magenta)
+cyl2= cylinder(pos=vector(xp,yp,0), radius=l/50, color=color.magenta)
 
 ######################################################################
 
@@ -99,11 +107,11 @@ cyl2= cylinder(pos=vector(xp,yp,0), radius=l/40, color=color.yellow)
 ###### Animación ######
 
 time_i = 0 
-t_run = 0  
+t_run = 0
 
 while t_run < t_final: 
-    vector1 = vector( l*sin(the_1[time_i]), -l*cos(the_1[time_i]), zp )
-    vector2 = vector( l*(sin(the_1[time_i])+sin(the_2[time_i])), -l*(cos(the_1[time_i])+cos(the_2[time_i])), zs )
+    vector1 = vector( l*sin(the_10[time_i]), -l*cos(the_10[time_i]), zp )
+    vector2 = vector( l*(sin(the_10[time_i])+sin(the_20[time_i])), -l*(cos(the_10[time_i])+cos(the_20[time_i])), zs )
     
     
     cyl1.axis = vector1
